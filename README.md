@@ -1,6 +1,6 @@
 # PgMoney
 
-Adds PostgreSQL' [`money` data type](https://www.postgresql.org/docs/9.5/datatype-money.html) to `Postgrex`.
+Adds PostgreSQL's [`money` data type] support (https://www.postgresql.org/docs/9.5/datatype-money.html) to `Postgrex`.
 
 The usage of `money` should be avoided though as explained in the [PostgreSQL wiki's **Don't do this**](https://wiki.postgresql.org/wiki/Don%27t_Do_This#Don.27t_use_money):
 
@@ -25,7 +25,6 @@ The usage of `money` should be avoided though as explained in the [PostgreSQL wi
 > then money might be the right thing.
 
 But this flawed type is out there and needs some interfacing, hence this project.
-
 
 
 ## Installation
