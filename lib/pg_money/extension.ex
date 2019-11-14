@@ -6,8 +6,8 @@ defmodule PgMoney.Extension do
   @behaviour Postgrex.Extension
   import Postgrex.BinaryUtils
 
-  @min_int_val -9223372036854775808
-  @max_int_val +9223372036854775807
+  @min_int_val -9_223_372_036_854_775_808
+  @max_int_val +9_223_372_036_854_775_807
   @storage_size 8
 
   def min_int_val, do: @min_int_val
@@ -45,9 +45,7 @@ defmodule PgMoney.Extension do
   def encode(_state) do
     quote location: :keep do
       %Decimal{} = decimal -> unquote(__MODULE__).encode_numeric(decimal)
-
       n when is_float(n) -> unquote(__MODULE__).encode_numeric(Decimal.from_float(n))
-
       n when is_integer(n) -> unquote(__MODULE__).encode_numeric(Decimal.new(n))
     end
   end
@@ -58,14 +56,15 @@ defmodule PgMoney.Extension do
     raise ArgumentError, "cannot represent #{inspect(decimal)} as money type"
   end
 
-  def encode_numeric(%Decimal{sign: sign, coef: coef, exp: 0}), do: encode_int(sign*coef*100)
-  def encode_numeric(%Decimal{sign: sign, coef: coef, exp: -1}), do: encode_int(sign*coef*10)
-  def encode_numeric(%Decimal{sign: sign, coef: coef, exp: -2}), do: encode_int(sign*coef)
+  def encode_numeric(%Decimal{sign: sign, coef: coef, exp: 0}), do: encode_int(sign * coef * 100)
+  def encode_numeric(%Decimal{sign: sign, coef: coef, exp: -1}), do: encode_int(sign * coef * 10)
+  def encode_numeric(%Decimal{sign: sign, coef: coef, exp: -2}), do: encode_int(sign * coef)
   def encode_numeric(%Decimal{} = dec), do: encode_numeric(Decimal.round(dec, 2))
 
   defp encode_int(int) when is_integer(int) and int < @min_int_val do
     raise ArgumentError, "#{inspect(int)} exceeds money's min value #{inspect(@min_int_val)}"
   end
+
   defp encode_int(int) when is_integer(int) and @max_int_val < int do
     raise ArgumentError, "#{inspect(int)} exceeds money's max value #{inspect(@max_int_val)}"
   end
