@@ -49,36 +49,46 @@ defmodule PgMoney.Extension do
     end
   end
 
-  def to_decimal(_, p) when not(is_integer(p)) or p < 0 do
+  def to_decimal(_, p) when not is_integer(p) or p < 0 do
     raise ArgumentError, "invalid precision #{inspect(p)}, must be a positive integer"
   end
+
   def to_decimal(digits, _p) when is_integer(digits) do
     Decimal.div(Decimal.new(digits), Decimal.new(100))
   end
+
   def to_decimal(other, _p) do
     raise ArgumentError, "cannot represent #{inspect(other)} as money, not a valid int64."
   end
-
 
   @impl true
   def encode(%{precision: p}) do
     quote location: :keep do
       %Decimal{} = decimal ->
-        <<unquote(@storage_size)::int32, (unquote(__MODULE__).to_binary(decimal, unquote(p)))::int64>>
+        <<unquote(@storage_size)::int32,
+          unquote(__MODULE__).to_binary(decimal, unquote(p))::int64>>
+
       n when is_float(n) ->
-        <<unquote(@storage_size)::int32, (unquote(__MODULE__).to_binary(Decimal.from_float(n), unquote(p)))::int64>>
+        <<unquote(@storage_size)::int32,
+          unquote(__MODULE__).to_binary(Decimal.from_float(n), unquote(p))::int64>>
+
       n when is_integer(n) ->
-        <<unquote(@storage_size)::int32, (unquote(__MODULE__).to_binary(Decimal.new(n), unquote(p)))::int64>>
-      other -> raise ArgumentError, "cannot encode #{inspect(other)} as money."
+        <<unquote(@storage_size)::int32,
+          unquote(__MODULE__).to_binary(Decimal.new(n), unquote(p))::int64>>
+
+      other ->
+        raise ArgumentError, "cannot encode #{inspect(other)} as money."
     end
   end
 
-  def to_binary(_, p) when not(is_integer(p)) or p < 0 do
+  def to_binary(_, p) when not is_integer(p) or p < 0 do
     raise ArgumentError, "invalid precision #{inspect(p)}, must be a positive integer."
   end
+
   def to_binary(%Decimal{coef: coef} = decimal, _) when coef in [:inf, :qNaN, :sNaN] do
     raise ArgumentError, "cannot represent #{inspect(decimal)} as money type."
   end
+
   def to_binary(%Decimal{sign: sign, coef: coef, exp: e} = d, p) do
     case e do
       0 -> check_validity(sign * coef * 100)
@@ -91,9 +101,11 @@ defmodule PgMoney.Extension do
   defp check_validity(int) when int < @min_int_val do
     raise ArgumentError, "#{inspect(int)} exceeds money's min value #{inspect(@min_int_val)}"
   end
+
   defp check_validity(int) when @max_int_val < int do
     raise ArgumentError, "#{inspect(int)} exceeds money's max value #{inspect(@max_int_val)}"
   end
+
   defp check_validity(int) when is_integer(int) do
     int
   end
