@@ -32,6 +32,14 @@ defmodule PgMoney.WithinPrecisionTest do
     end
   end
 
+  property "symmetry", [], %{precision: p} do
+    forall {_, decimal} <- decimal_within(p) do
+      encoded = PgMoney.Extension.to_binary(decimal, p)
+      decoded = PgMoney.Extension.to_decimal(encoded, p)
+      Decimal.eq?(decimal, decoded)
+    end
+  end
+
   defp decimal_within(precision) when is_integer(precision) and 0 <= precision do
     let integer <-
           PropCheck.BasicTypes.integer(
