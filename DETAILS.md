@@ -1,5 +1,5 @@
 # Details
-As stated in the [README.md](README.md) the `money` data type is flawed. Basically it is a 64bit signed integer and the connection's current `lc_monetary` settings dictates how to interpret it.
+As stated in the [README.md](readme.html) the `money` data type is flawed. Basically it is a 64bit signed integer and the connection's current `lc_monetary` settings dictates how to interpret it.
 
 Let's see what this means:
 

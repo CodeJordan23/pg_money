@@ -14,7 +14,10 @@ defmodule PgMoney.MixProject do
       # Docs
       name: "PgMoney",
       docs: [
-        extras: ["README.md"]
+        extras: [
+          "README.md",
+          "DETAILS.md"
+        ]
       ],
       #
       package: package()

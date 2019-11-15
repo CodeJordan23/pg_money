@@ -25,7 +25,7 @@ The usage of `money` should be avoided though as explained in the [PostgreSQL wi
 > then money might be the right thing.
 
 But this flawed type is out there and needs some interfacing, hence this project.
-Read more about its flaw in [details](DETAILS.md).
+Read more about its flaw in [details](details.html).
 
 ## Installation
 
@@ -41,7 +41,7 @@ end
 ```
 
 ## License
-Copyright [2019] [Michael J. Lüttjohann]
+Copyright 2019 Michael J. Lüttjohann
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
