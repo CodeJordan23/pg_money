@@ -4,31 +4,10 @@ defmodule PgMoney.Extension do
   """
 
   @behaviour Postgrex.Extension
-  import Postgrex.BinaryUtils
-
-  @min_int_val -9_223_372_036_854_775_808
-  @max_int_val +9_223_372_036_854_775_807
-  @storage_size 8
-
-  @doc """
-  The minimum integer value possible for the `money` type.
-  """
-  @spec min_int_val :: neg_integer()
-  def min_int_val, do: @min_int_val
-
-  @doc """
-  The maximum integer value possible for the `money` type.
-  """
-  @spec max_int_val :: pos_integer()
-  def max_int_val, do: @max_int_val
-
-  @doc """
-  Defines the storage size the `money` data type takes up in the database.
-  """
-  @spec storage_size :: non_neg_integer()
-  def storage_size, do: @storage_size
+  import PgMoney
 
   @impl true
+  @spec init(keyword) :: %{precision: PgMoney.precision()}
   def init(opts) do
     %{precision: Keyword.get(opts, :precision, 2)}
   end
@@ -46,9 +25,30 @@ defmodule PgMoney.Extension do
   @impl true
   def decode(%{precision: p}) do
     quote location: :keep do
-      <<unquote(@storage_size)::int32, data::binary-size(unquote(@storage_size))>> ->
+      <<unquote(PgMoney.storage_size())::int32,
+        data::binary-size(unquote(PgMoney.storage_size()))>> ->
         <<digits::int64>> = data
         unquote(__MODULE__).to_dec(digits, unquote(p))
+    end
+  end
+
+  @impl true
+  def encode(%{precision: p}) do
+    quote location: :keep do
+      %Decimal{} = decimal ->
+        <<unquote(PgMoney.storage_size())::int32,
+          unquote(__MODULE__).to_int(decimal, unquote(p))::int64>>
+
+      n when is_float(n) ->
+        <<unquote(PgMoney.storage_size())::int32,
+          unquote(__MODULE__).to_int(Decimal.from_float(n), unquote(p))::int64>>
+
+      n when is_integer(n) ->
+        <<unquote(PgMoney.storage_size())::int32,
+          unquote(__MODULE__).to_int(Decimal.new(n), unquote(p))::int64>>
+
+      other ->
+        raise ArgumentError, "cannot encode #{inspect(other)} as money."
     end
   end
 
@@ -79,25 +79,6 @@ defmodule PgMoney.Extension do
     raise ArgumentError, "cannot represent #{inspect(other)} as money, not a valid int64."
   end
 
-  @impl true
-  def encode(%{precision: p}) do
-    quote location: :keep do
-      %Decimal{} = decimal ->
-        <<unquote(@storage_size)::int32, unquote(__MODULE__).to_int(decimal, unquote(p))::int64>>
-
-      n when is_float(n) ->
-        <<unquote(@storage_size)::int32,
-          unquote(__MODULE__).to_int(Decimal.from_float(n), unquote(p))::int64>>
-
-      n when is_integer(n) ->
-        <<unquote(@storage_size)::int32,
-          unquote(__MODULE__).to_int(Decimal.new(n), unquote(p))::int64>>
-
-      other ->
-        raise ArgumentError, "cannot encode #{inspect(other)} as money."
-    end
-  end
-
   @doc """
   Returns an integer which corresponds to `money` with given precision.
   """
@@ -123,15 +104,11 @@ defmodule PgMoney.Extension do
     end
   end
 
-  defp check_validity(int) when int < @min_int_val do
-    raise ArgumentError, "#{inspect(int)} exceeds money's min value #{inspect(@min_int_val)}"
-  end
-
-  defp check_validity(int) when @max_int_val < int do
-    raise ArgumentError, "#{inspect(int)} exceeds money's max value #{inspect(@max_int_val)}"
-  end
-
-  defp check_validity(int) when is_integer(int) do
+  defp check_validity(int) when is_money(int) do
     int
+  end
+
+  defp check_validity(other) do
+    raise ArgumentError, "invalid money value #{inspect(other)}"
   end
 end

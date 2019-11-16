@@ -56,8 +56,8 @@ defmodule PgMoney.WithinPrecisionTest do
   defp decimal_within(precision) when is_integer(precision) and 0 <= precision do
     let integer <-
           PropCheck.BasicTypes.integer(
-            PgMoney.Extension.min_int_val(),
-            PgMoney.Extension.max_int_val()
+            PgMoney.minimum(),
+            PgMoney.maximum()
           ) do
       decimal = %Decimal{coef: abs(integer), exp: -precision, sign: sign(integer)}
       {integer, decimal}
