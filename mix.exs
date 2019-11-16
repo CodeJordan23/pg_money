@@ -38,7 +38,8 @@ defmodule PgMoney.MixProject do
       {:postgrex, ">= 0.0.0"},
       {:decimal, ">= 0.0.0"},
       {:propcheck, "~> 1.1", only: [:test, :dev]},
-      {:ex_doc, "~> 0.21", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
+      {:telemetry, "~> 0.4.0"}
     ]
   end
 
