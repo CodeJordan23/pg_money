@@ -7,15 +7,23 @@ defmodule PgMoney.Extension do
   import PgMoney
 
   @impl true
-  @spec init(keyword) :: %{precision: PgMoney.precision()}
+  @spec init(keyword) :: PgMoney.config()
   def init(opts) do
-    %{precision: Keyword.get(opts, :precision, 2)}
+    precision = Keyword.get(opts, :precision, 2)
+    telemetry_prefix = Keyword.get(opts, :telemetry_prefix, [__MODULE__])
+
+    %{
+      precision: precision,
+      telemetry_prefix: telemetry_prefix
+    }
   end
 
   @impl true
+  @spec format(PgMoney.config()) :: :binary
   def format(_state), do: :binary
 
   @impl true
+  @spec matching(PgMoney.config()) :: [receive: String.t(), send: String.t()]
   def matching(_state),
     do: [
       receive: "cash_recv",
@@ -23,6 +31,7 @@ defmodule PgMoney.Extension do
     ]
 
   @impl true
+  @spec decode(PgMoney.config()) :: Macro.t()
   def decode(%{precision: p}) do
     quote location: :keep do
       <<unquote(PgMoney.storage_size())::int32,
@@ -33,6 +42,7 @@ defmodule PgMoney.Extension do
   end
 
   @impl true
+  @spec encode(PgMoney.config()) :: Macro.t()
   def encode(%{precision: p}) do
     quote location: :keep do
       %Decimal{} = decimal ->
@@ -60,7 +70,7 @@ defmodule PgMoney.Extension do
     raise ArgumentError, "invalid precision #{inspect(precision)}, must be a positive integer"
   end
 
-  def to_dec(integer, p) when is_integer(integer) and is_integer(p) do
+  def to_dec(integer, p) when PgMoney.is_money(integer) and PgMoney.is_precision(p) do
     coef = abs(integer)
 
     %Decimal{
@@ -82,8 +92,8 @@ defmodule PgMoney.Extension do
   @doc """
   Returns an integer which corresponds to `money` with given precision.
   """
-  @spec to_int(Decimal.t(), non_neg_integer()) :: integer
-  def to_int(_decimal, precision) when not is_integer(precision) or precision < 0 do
+  @spec to_int(Decimal.t(), PgMoney.precision()) :: integer
+  def to_int(_decimal, precision) when not is_precision(precision) do
     raise ArgumentError, "invalid precision #{inspect(precision)}, must be a positive integer."
   end
 
