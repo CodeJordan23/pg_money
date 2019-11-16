@@ -45,19 +45,25 @@ defmodule PgMoney.Extension do
     quote location: :keep do
       <<unquote(@storage_size)::int32, data::binary-size(unquote(@storage_size))>> ->
         <<digits::int64>> = data
-        unquote(__MODULE__).to_decimal(digits, unquote(p))
+        unquote(__MODULE__).to_dec(digits, unquote(p))
     end
   end
 
-  def to_decimal(_, p) when not is_integer(p) or p < 0 do
+  @spec to_dec(integer, non_neg_integer()) :: Decimal.t()
+  def to_dec(_, p) when not is_integer(p) or p < 0 do
     raise ArgumentError, "invalid precision #{inspect(p)}, must be a positive integer"
   end
 
-  def to_decimal(digits, _p) when is_integer(digits) do
-    Decimal.div(Decimal.new(digits), Decimal.new(100))
+  def to_dec(digits, p) when is_integer(digits) and is_integer(p) do
+    coef = abs(digits)
+    %Decimal{
+      sign: if coef == digits do 1 else -1 end,
+      coef: coef,
+      exp: -p
+    }
   end
 
-  def to_decimal(other, _p) do
+  def to_dec(other, _p) do
     raise ArgumentError, "cannot represent #{inspect(other)} as money, not a valid int64."
   end
 
@@ -66,35 +72,39 @@ defmodule PgMoney.Extension do
     quote location: :keep do
       %Decimal{} = decimal ->
         <<unquote(@storage_size)::int32,
-          unquote(__MODULE__).to_binary(decimal, unquote(p))::int64>>
+          unquote(__MODULE__).to_int(decimal, unquote(p))::int64>>
 
       n when is_float(n) ->
         <<unquote(@storage_size)::int32,
-          unquote(__MODULE__).to_binary(Decimal.from_float(n), unquote(p))::int64>>
+          unquote(__MODULE__).to_int(Decimal.from_float(n), unquote(p))::int64>>
 
       n when is_integer(n) ->
         <<unquote(@storage_size)::int32,
-          unquote(__MODULE__).to_binary(Decimal.new(n), unquote(p))::int64>>
+          unquote(__MODULE__).to_int(Decimal.new(n), unquote(p))::int64>>
 
       other ->
         raise ArgumentError, "cannot encode #{inspect(other)} as money."
     end
   end
 
-  def to_binary(_, p) when not is_integer(p) or p < 0 do
+  def to_int(_, p) when not is_integer(p) or p < 0 do
     raise ArgumentError, "invalid precision #{inspect(p)}, must be a positive integer."
   end
 
-  def to_binary(%Decimal{coef: coef} = decimal, _) when coef in [:inf, :qNaN, :sNaN] do
+  def to_int(%Decimal{coef: coef} = decimal, _) when coef in [:inf, :qNaN, :sNaN] do
     raise ArgumentError, "cannot represent #{inspect(decimal)} as money type."
   end
 
-  def to_binary(%Decimal{sign: sign, coef: coef, exp: e} = d, p) do
-    case e do
-      0 -> check_validity(sign * coef * 100)
-      -1 -> check_validity(sign * coef * 10)
-      -2 -> check_validity(sign * coef)
-      _ -> to_binary(Decimal.round(d, 2), p)
+  def to_int(%Decimal{sign: sign, coef: coef, exp: e} = d, p) do
+    case -e do
+      n when p < n ->
+        to_int(Decimal.round(d, p), p)
+
+      n when n == p ->
+        check_validity(sign * coef)
+
+      n when n < p ->
+        to_int(%Decimal{sign: sign, coef: trunc(coef * 10), exp: e - 1}, p)
     end
   end
 

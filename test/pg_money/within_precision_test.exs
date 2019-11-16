@@ -21,22 +21,35 @@ defmodule PgMoney.WithinPrecisionTest do
 
   property "echo from db", [], %{conn: conn, precision: p} do
     forall {_, decimal} <- decimal_within(p) do
-      Decimal.eq?(decimal, echo(conn, decimal))
+      [m, n] = echo(conn, decimal)
+      assert Decimal.eq?(decimal, n)
+      assert Decimal.eq?(decimal, m)
     end
   end
 
   property "save in temp table", [], %{conn: conn, precision: p} do
     forall {_, decimal} <- decimal_within(p) do
-      result = save_in_temp_table(conn, decimal)
-      Decimal.eq?(decimal, result)
+      [m, n] = save_in_temp_table(conn, decimal)
+      assert Decimal.eq?(decimal, n)
+      assert Decimal.eq?(decimal, m)
     end
   end
 
-  property "symmetry", [], %{precision: p} do
+  property "symmetry (p=2)", [], %{precision: p} do
     forall {_, decimal} <- decimal_within(p) do
-      encoded = PgMoney.Extension.to_binary(decimal, p)
-      decoded = PgMoney.Extension.to_decimal(encoded, p)
+      encoded = PgMoney.Extension.to_int(decimal, p)
+      decoded = PgMoney.Extension.to_dec(encoded, p)
       Decimal.eq?(decimal, decoded)
+    end
+  end
+
+  property "symmetry (p in [0..4])", [], _ do
+    forall p <- PropCheck.BasicTypes.integer(0, 4) do
+      forall {_, decimal} <- decimal_within(p) do
+        encoded = PgMoney.Extension.to_int(decimal, p)
+        decoded = PgMoney.Extension.to_dec(encoded, p)
+        Decimal.eq?(decimal, decoded)
+      end
     end
   end
 
@@ -55,9 +68,9 @@ defmodule PgMoney.WithinPrecisionTest do
   defp sign(_), do: 1
 
   defp echo(conn, %Decimal{} = d) do
-    r = Postgrex.query!(conn, "select (#{d})::money", [])
-    [[value]] = r.rows
-    value
+    r = Postgrex.query!(conn, "select (#{d})::money, (#{d})::numeric", [])
+    [row] = r.rows
+    row
   end
 
   defp save_in_temp_table(conn, %Decimal{} = d) do
@@ -67,7 +80,7 @@ defmodule PgMoney.WithinPrecisionTest do
       Postgrex.query!(
         conn,
         """
-        CREATE TEMP TABLE temp_money ( m money )
+        CREATE TEMP TABLE temp_money ( m money, n numeric )
         ON COMMIT DROP;
         """,
         []
@@ -78,15 +91,15 @@ defmodule PgMoney.WithinPrecisionTest do
         Postgrex.query!(
           conn,
           """
-          INSERT INTO temp_money(m)
-          VALUES($1);
+          INSERT INTO temp_money(m, n)
+          VALUES($1, $2);
           """,
-          [d]
+          [d, d]
         )
 
       r = Postgrex.query!(conn, "SELECT * FROM temp_money;", [])
-      [[value]] = r.rows
-      value
+      [row] = r.rows
+      row
     after
       Postgrex.query!(conn, "ROLLBACK;", [])
     end
