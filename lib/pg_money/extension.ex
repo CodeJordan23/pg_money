@@ -11,18 +11,21 @@ defmodule PgMoney.Extension do
   @storage_size 8
 
   @doc """
-  Defines the minimum integer value possible for the `money` type.
+  The minimum integer value possible for the `money` type.
   """
+  @spec min_int_val:: neg_integer()
   def min_int_val, do: @min_int_val
 
   @doc """
-  Defines the maximum integer value possible for the `money` type.
+  The maximum integer value possible for the `money` type.
   """
+  @spec max_int_val:: pos_integer()
   def max_int_val, do: @max_int_val
 
   @doc """
-  Defines the size in the database.
+  Defines the storage size the `money` data type takes up in the database.
   """
+  @spec storage_size::non_neg_integer()
   def storage_size, do: @storage_size
 
   @impl true
@@ -49,17 +52,20 @@ defmodule PgMoney.Extension do
     end
   end
 
+  @doc """
+  Returns a `t:Decimal.t/0` which corresponds to `money` with given precision.
+  """
   @spec to_dec(integer, non_neg_integer()) :: Decimal.t()
-  def to_dec(_, p) when not is_integer(p) or p < 0 do
-    raise ArgumentError, "invalid precision #{inspect(p)}, must be a positive integer"
+  def to_dec(_integer, precision) when not is_integer(precision) or precision < 0 do
+    raise ArgumentError, "invalid precision #{inspect(precision)}, must be a positive integer"
   end
 
-  def to_dec(digits, p) when is_integer(digits) and is_integer(p) do
-    coef = abs(digits)
+  def to_dec(integer, p) when is_integer(integer) and is_integer(p) do
+    coef = abs(integer)
 
     %Decimal{
       sign:
-        if coef == digits do
+        if coef == integer do
           1
         else
           -1
@@ -92,8 +98,12 @@ defmodule PgMoney.Extension do
     end
   end
 
-  def to_int(_, p) when not is_integer(p) or p < 0 do
-    raise ArgumentError, "invalid precision #{inspect(p)}, must be a positive integer."
+  @doc """
+  Returns an integer which corresponds to `money` with given precision.
+  """
+  @spec to_int(Decimal.t(), non_neg_integer()) :: integer
+  def to_int(_decimal, precision) when not is_integer(precision) or precision < 0 do
+    raise ArgumentError, "invalid precision #{inspect(precision)}, must be a positive integer."
   end
 
   def to_int(%Decimal{coef: coef} = decimal, _) when coef in [:inf, :qNaN, :sNaN] do
