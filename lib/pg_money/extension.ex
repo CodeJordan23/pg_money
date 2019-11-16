@@ -56,8 +56,14 @@ defmodule PgMoney.Extension do
 
   def to_dec(digits, p) when is_integer(digits) and is_integer(p) do
     coef = abs(digits)
+
     %Decimal{
-      sign: if coef == digits do 1 else -1 end,
+      sign:
+        if coef == digits do
+          1
+        else
+          -1
+        end,
       coef: coef,
       exp: -p
     }
@@ -71,8 +77,7 @@ defmodule PgMoney.Extension do
   def encode(%{precision: p}) do
     quote location: :keep do
       %Decimal{} = decimal ->
-        <<unquote(@storage_size)::int32,
-          unquote(__MODULE__).to_int(decimal, unquote(p))::int64>>
+        <<unquote(@storage_size)::int32, unquote(__MODULE__).to_int(decimal, unquote(p))::int64>>
 
       n when is_float(n) ->
         <<unquote(@storage_size)::int32,
