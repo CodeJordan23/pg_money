@@ -13,19 +13,19 @@ defmodule PgMoney.Extension do
   @doc """
   The minimum integer value possible for the `money` type.
   """
-  @spec min_int_val:: neg_integer()
+  @spec min_int_val :: neg_integer()
   def min_int_val, do: @min_int_val
 
   @doc """
   The maximum integer value possible for the `money` type.
   """
-  @spec max_int_val:: pos_integer()
+  @spec max_int_val :: pos_integer()
   def max_int_val, do: @max_int_val
 
   @doc """
   Defines the storage size the `money` data type takes up in the database.
   """
-  @spec storage_size::non_neg_integer()
+  @spec storage_size :: non_neg_integer()
   def storage_size, do: @storage_size
 
   @impl true
