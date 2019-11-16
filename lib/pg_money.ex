@@ -5,9 +5,10 @@ defmodule PgMoney do
 
   @type money :: -9_223_372_036_854_775_808..9_223_372_036_854_775_807
   @type precision :: non_neg_integer()
+  @type telemetry :: false | nonempty_list(atom())
   @type config :: %{
           precision: precision(),
-          telemetry_prefix: nonempty_list(atom())
+          telemetry: telemetry()
         }
 
   @storage_size 8
@@ -39,7 +40,12 @@ defmodule PgMoney do
   defguard is_money(value) when is_integer(value) and @minimum <= value and value <= @maximum
 
   @doc """
-  Returns `true` if `value` is a non-negative integer.
+  Returns `true` if `value` is a valid `t:precision/0`, false otherwise.
   """
   defguard is_precision(value) when is_integer(value) and 0 <= value
+
+  @doc """
+  Returns `true` if `value` is a valid `t:telemetry/0`, false otherwise.
+  """
+  defguard is_telemetry(value) when value == false or (is_list(value) and length(value) > 0)
 end

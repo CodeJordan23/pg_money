@@ -10,11 +10,11 @@ defmodule PgMoney.Extension do
   @spec init(keyword) :: PgMoney.config()
   def init(opts) do
     precision = Keyword.get(opts, :precision, 2)
-    telemetry_prefix = Keyword.get(opts, :telemetry_prefix, [__MODULE__])
+    telemetry = Keyword.get(opts, :telemetry_prefix, [__MODULE__])
 
     %{
       precision: precision,
-      telemetry_prefix: telemetry_prefix
+      telemetry: telemetry
     }
   end
 
@@ -86,22 +86,24 @@ defmodule PgMoney.Extension do
   end
 
   def to_dec(other, _p) do
-    raise ArgumentError, "cannot represent #{inspect(other)} as money, not a valid int64."
+    raise ArgumentError, "cannot represent #{inspect(other)} as `money`, not a valid int64."
   end
 
   @doc """
   Returns an integer which corresponds to `money` with given precision.
   """
-  @spec to_int(Decimal.t(), PgMoney.precision()) :: integer
-  def to_int(_decimal, precision) when not is_precision(precision) do
-    raise ArgumentError, "invalid precision #{inspect(precision)}, must be a positive integer."
+  @spec to_int(Decimal.t(), PgMoney.precision(), PgMoney.telemetry()) :: integer
+  def to_int(decimal, precision, telemetry \\ false)
+
+  def to_int(_, p, _) when not is_precision(p) do
+    raise ArgumentError, "invalid precision #{inspect(p)}, must be a positive integer."
   end
 
-  def to_int(%Decimal{coef: coef} = decimal, _) when coef in [:inf, :qNaN, :sNaN] do
-    raise ArgumentError, "cannot represent #{inspect(decimal)} as money type."
+  def to_int(%Decimal{coef: coef} = d, _, _) when coef in [:inf, :qNaN, :sNaN] do
+    raise ArgumentError, "cannot represent #{inspect(d)} as `money`."
   end
 
-  def to_int(%Decimal{sign: sign, coef: coef, exp: e} = d, p) do
+  def to_int(%Decimal{sign: sign, coef: coef, exp: e} = d, p, _) do
     case -e do
       n when p < n ->
         to_int(Decimal.round(d, p), p)
