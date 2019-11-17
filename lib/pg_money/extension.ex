@@ -10,7 +10,7 @@ defmodule PgMoney.Extension do
   @spec init(keyword) :: PgMoney.config()
   def init(opts) do
     precision = Keyword.get(opts, :precision, 2)
-    telemetry = Keyword.get(opts, :telemetry_prefix, [__MODULE__])
+    telemetry = Keyword.get(opts, :telemetry_prefix, [:pg_money])
 
     %{
       precision: precision,
@@ -132,20 +132,25 @@ defmodule PgMoney.Extension do
   defp emit_event(false, _src, _dst, _p), do: :ok
 
   defp emit_event(prefix, %Decimal{} = src, %Decimal{} = dst, p) when is_list(prefix) do
-    meta = %{
-      src: src,
-      precision: p
-    }
-
-    {event, data} =
+    event =
       if Decimal.eq?(src, dst) do
-        {:lossless, %{diff: Decimal.new(0)}}
+        :lossless
       else
-        {:lossy, %{diff: Decimal.sub(dst, src)}}
+        :lossy
       end
 
     name = prefix ++ [event]
 
-    :telemetry.execute(name, data, meta)
+    :telemetry.execute(
+      name,
+      %{
+        dst: dst,
+        diff: Decimal.sub(src, dst)
+      },
+      %{
+        src: src,
+        precision: p
+      }
+    )
   end
 end
