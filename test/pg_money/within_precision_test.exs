@@ -14,94 +14,72 @@ defmodule PgMoney.WithinPrecisionTest do
   end
 
   property "integer <-> decimal equivalency", [], %{precision: p} do
-    forall {integer, decimal} <- decimal_within(p) do
+    forall {integer, decimal} <- PgMoney.Prop.Helper.decimal_within(p) do
       integer == decimal.sign * decimal.coef
     end
   end
 
   property "echo from db", [], %{conn: conn, precision: p} do
-    forall {_, decimal} <- decimal_within(p) do
-      [m, n] = echo(conn, decimal)
+    forall {_, decimal} <- PgMoney.Prop.Helper.decimal_within(p) do
+      [m, n] = PgMoney.Prop.Helper.echo(conn, decimal)
       assert Decimal.eq?(decimal, n)
       assert Decimal.eq?(decimal, m)
     end
   end
 
   property "save in temp table", [], %{conn: conn, precision: p} do
-    forall {_, decimal} <- decimal_within(p) do
-      [m, n] = save_in_temp_table(conn, decimal)
+    forall {_, decimal} <- PgMoney.Prop.Helper.decimal_within(p) do
+      [m, n] = PgMoney.Prop.Helper.save_in_temp_table(conn, decimal)
       assert Decimal.eq?(decimal, n)
       assert Decimal.eq?(decimal, m)
     end
   end
 
-  property "symmetry (p=2)", [], %{precision: p} do
-    forall {_, decimal} <- decimal_within(p) do
+  property "symmetry", [numtests: 10_000], _ do
+    forall {p, {i, decimal}} <- PgMoney.Prop.Helper.decimal_any_precision() do
       encoded = PgMoney.Extension.to_int(decimal, p)
       decoded = PgMoney.Extension.to_dec(encoded, p)
+
       Decimal.eq?(decimal, decoded)
+      |> collect(
+        with_title(:symmetry_precision),
+        p
+      )
+      |> collect(
+        with_title(:symmetry_buckets),
+        PgMoney.Prop.Helper.to_range(50, abs(i))
+      )
+      |> collect(
+        PropCheck.with_title(:symmetry_sign),
+        case {i, decimal.sign} do
+          {0, _} -> :zero
+          {_, 1} -> :pos
+          _ -> :neg
+        end
+      )
     end
   end
 
-  property "symmetry (p in [0..4])", [], _ do
-    forall p <- PropCheck.BasicTypes.integer(0, 4) do
-      forall {_, decimal} <- decimal_within(p) do
+  property "symmetry II", [numtests: 1_000], _ do
+    forall p <- PropCheck.BasicTypes.integer(1, 5) do
+      forall {i, decimal} <- PgMoney.Prop.Helper.decimal_within(p - 1) do
         encoded = PgMoney.Extension.to_int(decimal, p)
         decoded = PgMoney.Extension.to_dec(encoded, p)
+
         Decimal.eq?(decimal, decoded)
-      end
-    end
-  end
-
-  defp decimal_within(precision) when is_integer(precision) and 0 <= precision do
-    let integer <-
-          PropCheck.BasicTypes.integer(
-            PgMoney.minimum(),
-            PgMoney.maximum()
-          ) do
-      decimal = %Decimal{coef: abs(integer), exp: -precision, sign: sign(integer)}
-      {integer, decimal}
-    end
-  end
-
-  defp sign(i) when i < 0, do: -1
-  defp sign(_), do: 1
-
-  defp echo(conn, %Decimal{} = d) do
-    r = Postgrex.query!(conn, "select (#{d})::money, (#{d})::numeric", [])
-    [row] = r.rows
-    row
-  end
-
-  defp save_in_temp_table(conn, %Decimal{} = d) do
-    Postgrex.query!(conn, "BEGIN TRANSACTION;", [])
-
-    _ =
-      Postgrex.query!(
-        conn,
-        """
-        CREATE TEMP TABLE temp_money ( m money, n numeric )
-        ON COMMIT DROP;
-        """,
-        []
-      )
-
-    try do
-      _ =
-        Postgrex.query!(
-          conn,
-          """
-          INSERT INTO temp_money(m, n)
-          VALUES($1, $2);
-          """,
-          [d, d]
+        |> collect(
+          with_title(:symmetry_precision),
+          p
         )
-
-      r = Postgrex.query!(conn, "SELECT * FROM temp_money;", [])
-      [row] = r.rows
-      row
-    after
-      Postgrex.query!(conn, "ROLLBACK;", [])
+        |> collect(
+          with_title(:symmetry_buckets),
+          PgMoney.Prop.Helper.to_range(50, abs(i))
+        )
+        |> collect(
+          PropCheck.with_title(:symmetry_sign),
+          decimal.exp + p
+        )
+      end
     end
   end
 end

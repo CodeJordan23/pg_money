@@ -43,19 +43,19 @@ defmodule PgMoney.Extension do
 
   @impl true
   @spec encode(PgMoney.config()) :: Macro.t()
-  def encode(%{precision: p}) do
+  def encode(%{precision: p, telemetry: t}) do
     quote location: :keep do
       %Decimal{} = decimal ->
         <<unquote(PgMoney.storage_size())::int32,
-          unquote(__MODULE__).to_int(decimal, unquote(p))::int64>>
+          unquote(__MODULE__).to_int(decimal, unquote(p), unquote(t))::int64>>
 
       n when is_float(n) ->
         <<unquote(PgMoney.storage_size())::int32,
-          unquote(__MODULE__).to_int(Decimal.from_float(n), unquote(p))::int64>>
+          unquote(__MODULE__).to_int(Decimal.from_float(n), unquote(p), unquote(t))::int64>>
 
       n when is_integer(n) ->
         <<unquote(PgMoney.storage_size())::int32,
-          unquote(__MODULE__).to_int(Decimal.new(n), unquote(p))::int64>>
+          unquote(__MODULE__).to_int(Decimal.new(n), unquote(p), unquote(t))::int64>>
 
       other ->
         raise ArgumentError, "cannot encode #{inspect(other)} as money."
@@ -104,17 +104,27 @@ defmodule PgMoney.Extension do
   end
 
   def to_int(%Decimal{sign: sign, coef: coef, exp: e} = d, p, _) do
-    case -e do
-      n when p < n ->
-        to_int(Decimal.round(d, p), p)
-
-      n when n == p ->
+    case e + p do
+      n when n == 0 ->
         check_validity(sign * coef)
 
-      n when n < p ->
-        to_int(%Decimal{sign: sign, coef: trunc(coef * 10), exp: e - 1}, p)
+      n when 0 < n ->
+        f = Enum.reduce(1..n, 1, fn _, acc -> 10 * acc end)
+        check_validity(sign * coef * f)
+
+      n when n < 0 ->
+        to_int(Decimal.round(d, p), p)
+
+        # n when n < p ->
+        #   to_int(%Decimal{sign: sign, coef: trunc(coef * 10), exp: e - 1}, p)
     end
   end
+
+  # def to_inu(%Decimal{sign: sign, coef: coef, exp: e} = d, p, t) do
+  #   case t do
+
+  #   end
+  # end
 
   defp check_validity(int) when is_money(int) do
     int
