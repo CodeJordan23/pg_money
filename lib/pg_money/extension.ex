@@ -103,28 +103,23 @@ defmodule PgMoney.Extension do
     raise ArgumentError, "cannot represent #{inspect(d)} as `money`."
   end
 
-  def to_int(%Decimal{sign: sign, coef: coef, exp: e} = d, p, _) do
+  def to_int(%Decimal{sign: sign, coef: coef, exp: e} = d, p, t) do
     case e + p do
       n when n == 0 ->
+        emit_event(t, d, d, p)
         check_validity(sign * coef)
 
       n when 0 < n ->
+        emit_event(t, d, d, p)
         f = Enum.reduce(1..n, 1, fn _, acc -> 10 * acc end)
         check_validity(sign * coef * f)
 
       n when n < 0 ->
-        to_int(Decimal.round(d, p), p)
-
-        # n when n < p ->
-        #   to_int(%Decimal{sign: sign, coef: trunc(coef * 10), exp: e - 1}, p)
+        dst = Decimal.round(d, p)
+        emit_event(t, d, dst, p)
+        check_validity(dst.sign * dst.coef)
     end
   end
-
-  # def to_inu(%Decimal{sign: sign, coef: coef, exp: e} = d, p, t) do
-  #   case t do
-
-  #   end
-  # end
 
   defp check_validity(int) when is_money(int) do
     int
@@ -132,5 +127,25 @@ defmodule PgMoney.Extension do
 
   defp check_validity(other) do
     raise ArgumentError, "invalid money value #{inspect(other)}"
+  end
+
+  defp emit_event(false, _src, _dst, _p), do: :ok
+
+  defp emit_event(prefix, %Decimal{} = src, %Decimal{} = dst, p) when is_list(prefix) do
+    meta = %{
+      src: src,
+      precision: p
+    }
+
+    {event, data} =
+      if Decimal.eq?(src, dst) do
+        {:lossless, %{diff: Decimal.new(0)}}
+      else
+        {:lossy, %{diff: Decimal.sub(dst, src)}}
+      end
+
+    name = prefix ++ [event]
+
+    :telemetry.execute(name, data, meta)
   end
 end
