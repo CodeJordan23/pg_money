@@ -32,12 +32,12 @@ defmodule PgMoney.Extension do
 
   @impl true
   @spec decode(PgMoney.config()) :: Macro.t()
-  def decode(%{precision: p}) do
+  def decode(%{precision: p, telemetry: t}) do
     quote location: :keep do
       <<unquote(PgMoney.storage_size())::int32,
         data::binary-size(unquote(PgMoney.storage_size()))>> ->
         <<digits::int64>> = data
-        unquote(__MODULE__).to_dec(digits, unquote(p))
+        unquote(__MODULE__).to_dec(digits, unquote(p), unquote(t))
     end
   end
 
@@ -65,28 +65,43 @@ defmodule PgMoney.Extension do
   @doc """
   Returns a `t:Decimal.t/0` which corresponds to `money` with given precision.
   """
-  @spec to_dec(integer, non_neg_integer()) :: Decimal.t()
-  def to_dec(_integer, precision) when not is_integer(precision) or precision < 0 do
-    raise ArgumentError, "invalid precision #{inspect(precision)}, must be a positive integer"
-  end
+  @spec to_dec(integer, PgMoney.precision(), PgMoney.telemetry()) :: Decimal.t()
+  def to_dec(integer, precision, telemetry \\ false) do
+    started_at = current_time()
 
-  def to_dec(integer, p) when PgMoney.is_money(integer) and PgMoney.is_precision(p) do
-    coef = abs(integer)
+    try do
+      case {PgMoney.is_money(integer), PgMoney.is_precision(precision)} do
+        {true, true} ->
+          coef = abs(integer)
 
-    %Decimal{
-      sign:
-        if coef == integer do
-          1
-        else
-          -1
-        end,
-      coef: coef,
-      exp: -p
-    }
-  end
+          %Decimal{
+            sign:
+              if coef == integer do
+                1
+              else
+                -1
+              end,
+            coef: coef,
+            exp: -precision
+          }
 
-  def to_dec(other, _p) do
-    raise ArgumentError, "cannot represent #{inspect(other)} as `money`, not a valid int64."
+        {false, false} ->
+          raise ArgumentError,
+                "invalid money (#{inspect(integer)}) and precision (#{inspect(precision)})"
+
+        {false, _} ->
+          raise ArgumentError,
+                "cannot represent #{inspect(integer)} as `money`, not a valid int64."
+
+        {_, false} ->
+          raise ArgumentError,
+                "invalid precision #{inspect(precision)}, must be a positive integer"
+      end
+    after
+      duration = time_diff(started_at, current_time())
+      emit_start(telemetry, :to_dec, started_at)
+      emit_stop(telemetry, :to_dec, duration)
+    end
   end
 
   @doc """
@@ -95,29 +110,42 @@ defmodule PgMoney.Extension do
   @spec to_int(Decimal.t(), PgMoney.precision(), PgMoney.telemetry()) :: integer
   def to_int(decimal, precision, telemetry \\ false)
 
-  def to_int(_, p, _) when not is_precision(p) do
-    raise ArgumentError, "invalid precision #{inspect(p)}, must be a positive integer."
-  end
-
-  def to_int(%Decimal{coef: coef} = d, _, _) when coef in [:inf, :qNaN, :sNaN] do
-    raise ArgumentError, "cannot represent #{inspect(d)} as `money`."
-  end
-
   def to_int(%Decimal{sign: sign, coef: coef, exp: e} = d, p, t) do
-    case e + p do
-      n when n == 0 ->
-        emit_event(t, d, d, p)
-        check_validity(sign * coef)
+    started_at = current_time()
 
-      n when 0 < n ->
-        emit_event(t, d, d, p)
-        f = Enum.reduce(1..n, 1, fn _, acc -> 10 * acc end)
-        check_validity(sign * coef * f)
+    try do
+      cond do
+        not is_precision(p) ->
+          raise ArgumentError, "invalid precision #{inspect(p)}, must be a positive integer."
 
-      n when n < 0 ->
-        dst = Decimal.round(d, p)
-        emit_event(t, d, dst, p)
-        check_validity(dst.sign * dst.coef)
+        coef in [:inf, :qNaN, :sNaN] ->
+          raise ArgumentError, message: "cannot represent #{inspect(d)} as `money`."
+
+        true ->
+          {dst, int} =
+            case e + p do
+              n when n == 0 ->
+                {d, sign * coef}
+
+              n when 0 < n ->
+                f = Enum.reduce(1..n, 1, fn _, acc -> 10 * acc end)
+                {d, sign * coef * f}
+
+              n when n < 0 ->
+                dst = Decimal.round(d, p)
+                {dst, dst.sign * dst.coef}
+            end
+
+          try do
+            check_validity(int)
+          after
+            emit_event(t, :to_int, d, dst, p)
+          end
+      end
+    after
+      duration = time_diff(started_at, current_time())
+      emit_start(t, :to_int, started_at)
+      emit_stop(t, :to_int, duration)
     end
   end
 
@@ -129,9 +157,33 @@ defmodule PgMoney.Extension do
     raise ArgumentError, "invalid money value #{inspect(other)}"
   end
 
-  defp emit_event(false, _src, _dst, _p), do: :ok
+  defp emit_start(false, _op, _started_at), do: :ok
 
-  defp emit_event(prefix, %Decimal{} = src, %Decimal{} = dst, p) when is_list(prefix) do
+  defp emit_start(prefix, op, started_at) do
+    name = prefix ++ [:start]
+
+    :telemetry.execute(
+      name,
+      %{time: started_at},
+      %{operation: op}
+    )
+  end
+
+  defp emit_stop(false, _op, _duration), do: :ok
+
+  defp emit_stop(prefix, op, duration) do
+    name = prefix ++ [:stop]
+
+    :telemetry.execute(
+      name,
+      %{duration: duration},
+      %{operation: op}
+    )
+  end
+
+  defp emit_event(false, _op, _src, _dst, _p), do: :ok
+
+  defp emit_event(prefix, :to_int, %Decimal{} = src, %Decimal{} = dst, p) when is_list(prefix) do
     event =
       if Decimal.eq?(src, dst) do
         :lossless
@@ -153,4 +205,7 @@ defmodule PgMoney.Extension do
       }
     )
   end
+
+  defp current_time, do: :erlang.monotonic_time(:micro_seconds)
+  defp time_diff(start, stop), do: stop - start
 end
