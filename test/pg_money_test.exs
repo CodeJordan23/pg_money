@@ -3,7 +3,7 @@ defmodule PgMoneyTest do
   use PropCheck
 
   setup do
-    {:ok, conn} = start_supervised({Postgrex, PgMoney.Test.Helper.db_opts()})
+    {:ok, conn} = start_supervised({Postgrex, PgMoney.TestHelper.DB.opts()})
 
     %{conn: conn, precision: 2}
   end

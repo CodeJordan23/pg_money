@@ -1,9 +1,10 @@
 defmodule PgMoney.TelemetryTest do
   use ExUnit.Case, async: false
   use PropCheck
+  alias PgMoney.TestHelper, as: TH
 
   setup do
-    {:ok, conn} = start_supervised({Postgrex, PgMoney.Test.Helper.db_opts()})
+    {:ok, conn} = start_supervised({Postgrex, TH.DB.opts()})
     %{conn: conn, precision: 2}
   end
 
@@ -21,7 +22,7 @@ defmodule PgMoney.TelemetryTest do
   end
 
   property "rounding diff adds up to original", [], _ do
-    forall {p, {_i, decimal}} <- PgMoney.Prop.Helper.decimal_any_precision() do
+    forall {p, _i, decimal} <- TH.Gen.decimal() do
       {id, ns} = create_redir(:pg_money_test, self())
 
       try do
@@ -34,7 +35,7 @@ defmodule PgMoney.TelemetryTest do
         {:msg, msg} = receive_one()
 
         case msg.event do
-          [:pg_money_test, :lossy] ->
+          [_, :lossy] ->
             summed = Decimal.add(msg.data.dst, msg.data.diff)
 
             Decimal.eq?(src_diff, msg.data.diff) &&
@@ -52,7 +53,7 @@ defmodule PgMoney.TelemetryTest do
   end
 
   property "fake precision do not result in fake lossy messages", [] do
-    forall {p, {_i, decimal}} <- PgMoney.Prop.Helper.decimal_any_precision() do
+    forall {p, _i, decimal} <- TH.Gen.decimal() do
       {id, ns} = create_redir(:pg_money_test, self())
 
       try do
@@ -62,7 +63,30 @@ defmodule PgMoney.TelemetryTest do
         {:msg, msg} = receive_one()
 
         case msg.event do
-          [:pg_money_test, :lossless] ->
+          [_, :lossless] ->
+            true
+
+          _ ->
+            false
+        end
+        |> PropCheck.collect(with_title(:precision), p)
+      after
+        :telemetry.detach(id)
+      end
+    end
+  end
+
+  property "integer encoding shouldn't be lossy", [] do
+    forall {p, integer} <- {TH.Gen.precision(), TH.Gen.money_int()} do
+      {id, ns} = create_redir(:pg_money_test, self())
+
+      try do
+        subject = Decimal.new(integer)
+        PgMoney.Extension.to_int(subject, p, ns)
+        {:msg, msg} = receive_one()
+
+        case msg.event do
+          [_, :lossless] ->
             true
 
           _ ->
