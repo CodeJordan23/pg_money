@@ -143,7 +143,8 @@ defmodule PgMoney.Extension do
           end
       end
     after
-      duration = time_diff(started_at, current_time())
+      ended_at = current_time()
+      duration = time_diff(started_at, ended_at)
       emit_start(t, :to_int, started_at)
       emit_stop(t, :to_int, duration)
     end

@@ -1,7 +1,25 @@
-defmodule PgMoney.TestHelper do
+defmodule PgMoney.TestCase do
   import PgMoney
   import PropCheck
   alias PropCheck, as: PC
+  use ExUnit.CaseTemplate
+
+  using do
+    quote do
+      import PgMoney
+      use PropCheck
+      alias PropCheck, as: PC
+      import PgMoney.TestCase
+      alias PgMoney.TestCase.DB
+      alias PgMoney.TestCase.Gen
+      alias PgMoney.Extension, as: Ext
+    end
+  end
+
+  setup do
+    {:ok, conn} = start_supervised({Postgrex, PgMoney.TestCase.DB.opts()})
+    %{conn: conn, precision: 2}
+  end
 
   def to_range(m, n) do
     base = div(n, m)

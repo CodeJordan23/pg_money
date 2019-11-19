@@ -1,12 +1,5 @@
 defmodule PgMoneyTest do
-  use ExUnit.Case, async: true
-  use PropCheck
-
-  setup do
-    {:ok, conn} = start_supervised({Postgrex, PgMoney.TestHelper.DB.opts()})
-
-    %{conn: conn, precision: 2}
-  end
+  use PgMoney.TestCase
 
   test "can connect", %{conn: conn} do
     r = Postgrex.query!(conn, "select 42", [])
