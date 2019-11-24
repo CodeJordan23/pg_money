@@ -121,7 +121,7 @@ I want to mention some of these giants and warmly thank all the people involved:
     For making it so easy to extend.
 - [Credo](https://github.com/rrrene/credo/) and [`mix format`](https://hexdocs.pm/mix/master/Mix.Tasks.Format.html) for giving me guidance.
 - Plataformatec for hooking me on `Elixir` with their **little Ecto Cookbook** on August 19th. 13 weeks ago...
-- Mathias Verraes found at his [homepage](http://verraes.net/) for writing his superb article `Emergent Contexts through Refinement` found here [DDD - The First 15 Years](https://universities.leanpub.com/ddd_first_15_years). Like all the people involved with this book.
+- Mathias Verraes found at his [homepage](http://verraes.net/) for writing his superb article `Emergent Contexts through Refinement` found here [DDD - The First 15 Years](https://universities.leanpub.com/ddd_first_15_years) and like all the people involved with this book.
 - the whole `Elixir` ecosystem. It was fun writing this library.
     - writing documentation was easy and generated easily with `ExDoc`
     - writing tests was seamless.
