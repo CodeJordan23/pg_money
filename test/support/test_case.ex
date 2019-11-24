@@ -1,23 +1,30 @@
 defmodule PgMoney.TestCase do
+  @moduledoc """
+  This module defines the common setup for all tests inside this project.
+  """
+
   import PgMoney
+  alias PgMoney.TestCase.DB
+
   import PropCheck
   alias PropCheck, as: PC
   use ExUnit.CaseTemplate
 
   using do
     quote do
-      import PgMoney
       use PropCheck
       alias PropCheck, as: PC
+
+      import PgMoney
+      alias PgMoney.Extension, as: Ext
       import PgMoney.TestCase
       alias PgMoney.TestCase.DB
       alias PgMoney.TestCase.Gen
-      alias PgMoney.Extension, as: Ext
     end
   end
 
   setup do
-    {:ok, conn} = start_supervised({Postgrex, PgMoney.TestCase.DB.opts()})
+    {:ok, conn} = start_supervised({Postgrex, DB.opts()})
     %{conn: conn, precision: 2}
   end
 
@@ -27,6 +34,10 @@ defmodule PgMoney.TestCase do
   end
 
   defmodule Gen do
+    @moduledoc """
+    Provides relevant generators for property-based testing.
+    """
+
     @spec precision(non_neg_integer(), non_neg_integer()) :: :proper_types.type()
     def precision(low \\ 0, high \\ 4)
 
@@ -35,12 +46,12 @@ defmodule PgMoney.TestCase do
     end
 
     @spec money_int :: :proper_types.type()
-    def money_int() do
+    def money_int do
       PC.BasicTypes.integer(minimum(), maximum())
     end
 
     @spec decimal :: :proper_types.type()
-    def decimal() do
+    def decimal do
       let p <- precision() do
         decimal(p)
       end
@@ -59,6 +70,10 @@ defmodule PgMoney.TestCase do
   end
 
   defmodule DB do
+    @moduledoc """
+    This module groups database related stuff.
+    """
+
     def opts do
       [
         username: "postgres",
@@ -67,12 +82,14 @@ defmodule PgMoney.TestCase do
       ]
     end
 
+    @spec echo(Postgrex.conn(), Decimal.t()) :: nonempty_list(Decimal.t())
     def echo(conn, %Decimal{} = d) do
       r = Postgrex.query!(conn, "select (#{d})::money, (#{d})::numeric", [])
       [row] = r.rows
       row
     end
 
+    @spec save_in_temp_table(Postgrex.conn(), Decimal.t()) :: nonempty_list(Decimal.t())
     def save_in_temp_table(conn, %Decimal{} = d) do
       Postgrex.query!(conn, "BEGIN TRANSACTION;", [])
 

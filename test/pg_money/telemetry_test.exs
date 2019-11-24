@@ -158,7 +158,7 @@ defmodule PgMoney.TelemetryTest do
     create_events(@exec_postfixes, ns)
   end
 
-  defp register_telemetry() do
+  defp register_telemetry do
     register_telemetry(diff_events())
   end
 
