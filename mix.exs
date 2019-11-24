@@ -55,7 +55,8 @@ defmodule PgMoney.MixProject do
     ]
   end
 
-  defp description(), do: """
-  Adds support for PostgreSQL's money data type.
-  """
+  defp description(),
+    do: """
+    Adds support for PostgreSQL's money data type.
+    """
 end

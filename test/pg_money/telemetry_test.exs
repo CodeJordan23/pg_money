@@ -111,6 +111,7 @@ defmodule PgMoney.TelemetryTest do
             {:msg, msg} = receive_one()
             acc + msg.data.duration
           end)
+
         assert total_duration == 0
       after
         :telemetry.detach(id)
@@ -163,6 +164,7 @@ defmodule PgMoney.TelemetryTest do
   end
 
   def register_telemetry(events, ns \\ @namespace)
+
   def register_telemetry(events, ns) do
     handler_id = UUID.uuid4()
 
@@ -176,5 +178,4 @@ defmodule PgMoney.TelemetryTest do
 
     {handler_id, [ns]}
   end
-
 end
