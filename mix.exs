@@ -17,7 +17,8 @@ defmodule PgMoney.MixProject do
       docs: [
         extras: [
           "README.md",
-          "DETAILS.md"
+          "FAIL_IN_THREE_ACTS.md",
+          "LESSONS_LEARNED.md"
         ]
       ],
       #
@@ -48,7 +49,7 @@ defmodule PgMoney.MixProject do
 
   defp package() do
     [
-      files: ["lib", "mix.exs", "README.md", "LICENSE-2.0.txt", "DETAILS.md"],
+      files: ["lib", "test", "mix.exs", "README.md", "LICENSE-2.0.txt", "DETAILS.md"],
       maintainers: ["Michael J. Lüttjohann"],
       licenses: ["Apache 2.0"],
       links: %{}

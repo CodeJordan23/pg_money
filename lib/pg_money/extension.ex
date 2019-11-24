@@ -66,7 +66,9 @@ defmodule PgMoney.Extension do
   Returns a `t:Decimal.t/0` which corresponds to `money` with given precision.
   """
   @spec to_dec(integer, PgMoney.precision(), PgMoney.telemetry()) :: Decimal.t()
-  def to_dec(integer, precision, telemetry \\ false) do
+  def to_dec(integer, precision \\ 2, telemetry \\ false)
+
+  def to_dec(integer, precision, telemetry) do
     started_at = current_time()
 
     try do
@@ -108,7 +110,7 @@ defmodule PgMoney.Extension do
   Returns an integer which corresponds to `money` with given precision.
   """
   @spec to_int(Decimal.t(), PgMoney.precision(), PgMoney.telemetry()) :: integer
-  def to_int(decimal, precision, telemetry \\ false)
+  def to_int(decimal, precision \\ 2, telemetry \\ false)
 
   def to_int(%Decimal{sign: sign, coef: coef, exp: e} = d, p, t) do
     started_at = current_time()
@@ -207,6 +209,6 @@ defmodule PgMoney.Extension do
     )
   end
 
-  defp current_time, do: :erlang.monotonic_time(:micro_seconds)
+  defp current_time, do: :erlang.monotonic_time(:nanosecond)
   defp time_diff(start, stop), do: stop - start
 end

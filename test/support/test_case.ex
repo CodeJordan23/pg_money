@@ -78,7 +78,7 @@ defmodule PgMoney.TestCase do
       [
         username: "postgres",
         database: "pg_money_test",
-        types: PgMoney.PostgresTypes
+        types: PgMoney.Type
       ]
     end
 
