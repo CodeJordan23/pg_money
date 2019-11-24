@@ -13,8 +13,13 @@ defmodule PgMoney.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       # Docs
       name: "PgMoney",
+      description: description(),
       docs: [
-        extras: ["README.md"]
+        extras: [
+          "README.md",
+          "FAIL_IN_THREE_ACTS.md",
+          "LESSONS_LEARNED.md"
+        ]
       ],
       #
       package: package()
@@ -34,15 +39,25 @@ defmodule PgMoney.MixProject do
     [
       {:postgrex, ">= 0.0.0"},
       {:decimal, ">= 0.0.0"},
+      {:telemetry, "~> 0.4.0"},
       {:propcheck, "~> 1.1", only: [:test, :dev]},
-      {:ex_doc, "~> 0.21", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
+      {:credo, "~> 1.1.0", only: [:dev, :test], runtime: false},
+      {:elixir_uuid, "~> 1.2", only: [:test, :dev]}
     ]
   end
 
   defp package() do
     [
+      files: ["lib", "test", "mix.exs", "README.md", "LICENSE-2.0.txt", "DETAILS.md"],
       maintainers: ["Michael J. Lüttjohann"],
-      licences: ["Apache 2.0"]
+      licenses: ["Apache 2.0"],
+      links: %{}
     ]
   end
+
+  defp description(),
+    do: """
+    Adds support for PostgreSQL's money data type.
+    """
 end
