@@ -21,7 +21,7 @@ defmodule PgMoney.WithinPrecisionTest do
     end
   end
 
-  property "save in temp table", [], %{conn: conn, precision: p} do
+  property "what you write is what you read", [], %{conn: conn, precision: p} do
     forall {^p, _, decimal} <- Gen.decimal(p) do
       [m, n] = DB.save_in_temp_table(conn, decimal)
       assert Decimal.eq?(decimal, n)
