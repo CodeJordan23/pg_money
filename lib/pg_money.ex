@@ -35,6 +35,45 @@ defmodule PgMoney do
   def storage_size, do: @storage_size
 
   @doc """
+  Returns the maximum `Decimal.t()` value for the given `precision`.
+  """
+  @spec max(precision()) :: Decimal.t()
+  def max(precision),
+    do:
+      Decimal.div(
+        @maximum,
+        pow(10, precision)
+      )
+
+  @doc """
+  Returns the minimum `Decimal.t()` value for the given `precision`.
+  """
+  @spec min(precision()) :: Decimal.t()
+  def min(precision),
+    do:
+      Decimal.div(
+        @minimum,
+        pow(10, precision)
+      )
+
+  defp pow(_, 0), do: 1
+  defp pow(n, 1), do: n
+  defp pow(n, 2), do: square(n)
+
+  defp pow(n, x) do
+    case Integer.mod(x, 2) do
+      0 ->
+        x = trunc(x / 2)
+        square(pow(n, x))
+
+      1 ->
+        n * pow(n, x - 1)
+    end
+  end
+
+  defp square(x), do: x * x
+
+  @doc """
   Returns `true` if `value` is an integer and falls between the `minimum/0` and `maximum/0` (inclusive) range of the `money` data type.
   """
   defguard is_money(value) when is_integer(value) and @minimum <= value and value <= @maximum
