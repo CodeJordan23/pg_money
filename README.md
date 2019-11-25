@@ -34,7 +34,7 @@ The usage of `money` should be avoided though as explained in the [PostgreSQL wi
 
 
 But this flawed type is out there and needs some interfacing, hence this project.
-See how it fails you in a [fail in three acts](FAIL_IN_THREE_ACTS.html).
+See how it fails you in a [fail in three acts](fail_in_three_acts.html).
 
 ## Installation
 
@@ -46,7 +46,7 @@ by adding `pg_money` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:pg_money, "~> 0.1.0"}
+    {:pg_money, "~>0.4.20"}
   ]
 end
 ```
@@ -58,7 +58,7 @@ Reference it via it's github url:
 ```elixir
 def deps do
   [
-    {:pg_money, git: "https://github.com/CodeJordan23/TBD.git"}
+    {:pg_money, git: "https://github.com/CodeJordan23/pg_money.git", tag: "0.4.20"}
   ]
 end
 ```
