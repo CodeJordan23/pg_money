@@ -46,7 +46,7 @@ by adding `pg_money` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:pg_money, "~>0.4.20"}
+    {:pg_money, "~>0.4.21"}
   ]
 end
 ```
@@ -58,7 +58,7 @@ Reference it via it's github url:
 ```elixir
 def deps do
   [
-    {:pg_money, git: "https://github.com/CodeJordan23/pg_money.git", tag: "0.4.20"}
+    {:pg_money, git: "https://github.com/CodeJordan23/pg_money.git", tag: "0.4.21"}
   ]
 end
 ```
