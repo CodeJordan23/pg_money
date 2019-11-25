@@ -1,7 +1,7 @@
 defmodule PgMoney.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.4.20"
 
   def project do
     [
@@ -15,6 +15,8 @@ defmodule PgMoney.MixProject do
       name: "PgMoney",
       description: description(),
       docs: [
+        main: "readme",
+        logo: "pg_money.png",
         extras: [
           "README.md",
           "FAIL_IN_THREE_ACTS.md",
@@ -52,7 +54,7 @@ defmodule PgMoney.MixProject do
       files: ["lib", "test", "mix.exs", "README.md", "LICENSE-2.0.txt", "DETAILS.md"],
       maintainers: ["Michael J. Lüttjohann"],
       licenses: ["Apache 2.0"],
-      links: %{}
+      links: %{"GitHub" => "https://github.com/CodeJordan23/pg_money"}
     ]
   end
 
